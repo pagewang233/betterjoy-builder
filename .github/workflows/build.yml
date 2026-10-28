@@ -9,6 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-2022
+    timeout-minutes: 15
 
     steps:
       - name: Checkout BetterJoy
@@ -26,13 +27,32 @@ jobs:
       - name: Restore dependencies
         run: nuget restore BetterJoy.sln
 
-      - name: Build Release
+      # 安装 .NET Framework 4.6.1 引用程序集
+      - name: Install .NET Framework 4.6.1 Reference Assemblies
+        shell: pwsh
         run: |
+          nuget install Microsoft.NETFramework.ReferenceAssemblies.net461 `
+            -Version 1.0.3 `
+            -OutputDirectory framework-packages `
+            -NonInteractive
+
+      # 编译 BetterJoy
+      - name: Build Release
+        shell: pwsh
+        run: |
+          $frameworkPath = Join-Path $PWD "framework-packages\Microsoft.NETFramework.ReferenceAssemblies.net461.1.0.3\build\.NETFramework\v4.6.1"
+
+          if (!(Test-Path "$frameworkPath\mscorlib.dll")) {
+            throw "Framework reference assemblies not found: $frameworkPath"
+          }
+
           msbuild BetterJoy.sln `
             -p:Configuration=Release `
             -p:Platform=x64 `
+            -p:FrameworkPathOverride="$frameworkPath" `
             -t:Rebuild
 
+      # 上传编译结果
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
