@@ -1,0 +1,41 @@
+name: Build BetterJoy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout BetterJoy
+        uses: actions/checkout@v4
+        with:
+          repository: dannycuichan/BetterJoy
+          ref: master
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore dependencies
+        run: nuget restore BetterJoy.sln
+
+      - name: Build Release
+        run: |
+          msbuild BetterJoy.sln `
+            -p:Configuration=Release `
+            -p:Platform=x64 `
+            -t:Rebuild
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetterJoy-x64
+          path: BetterJoyForCemu/bin/x64/Release/
+          if-no-files-found: error
